@@ -1,0 +1,223 @@
+{
+  "name": "analyze-project",
+  "displayName": "Analyze Project",
+  "description": "Analyze your project for issues using GitHub Copilot or Claude via @analyze-project chat participant",
+  "version": "0.1.0",
+  "publisher": "analyze-project",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.93.0"
+  },
+  "categories": [
+    "AI",
+    "Other"
+  ],
+  "activationEvents": [
+    "onChatParticipant:analyze-project.analyzer"
+  ],
+  "main": "./out/extension.cjs",
+  "contributes": {
+    "chatParticipants": [
+      {
+        "id": "analyze-project.analyzer",
+        "name": "analyze-project",
+        "fullName": "Project Analyzer",
+        "description": "Analyze your project for issues. Usage: @analyze-project <describe what to analyze>",
+        "isSticky": false
+      }
+    ],
+    "configuration": {
+      "title": "Analyze Project",
+      "properties": {
+        "analyzeProject.llmProvider": {
+          "type": "string",
+          "enum": ["copilot", "claude"],
+          "enumDescriptions": [
+            "Use GitHub Copilot (requires GitHub Copilot extension)",
+            "Use Claude (requires Claude VS Code extension)"
+          ],
+          "default": "copilot",
+          "description": "LLM provider to use for project analysis"
+        },
+        "analyzeProject.copilotModel": {
+          "type": "string",
+          "default": "gpt-4o",
+          "description": "Copilot model family to use (e.g. gpt-4o, o1, claude-3.5-sonnet)"
+        },
+        "analyzeProject.contentBudgetBytes": {
+          "type": "number",
+          "default": 60000,
+          "description": "Maximum total bytes read from project files before truncation, to optimize LLM token usage"
+        },
+        "analyzeProject.maxFilenameLength": {
+          "type": "number",
+          "default": 35,
+          "description": "Maximum character length for generated analysis report filenames"
+        },
+        "analyzeProject.maxIssues": {
+          "type": "number",
+          "default": 20,
+          "description": "Maximum number of issues to request and return per analysis run"
+        },
+        "analyzeProject.stopWords": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [
+            "a", "an", "the", "and", "or", "but", "in", "on", "at", "to", "for",
+            "of", "with", "by", "from", "is", "are", "be", "been", "being",
+            "i", "me", "my", "we", "our", "you", "your", "it", "its",
+            "this", "that", "these", "those", "please"
+          ],
+          "description": "Words filtered out when generating output filenames from the user prompt"
+        },
+        "analyzeProject.priorityPatterns": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [
+            "package\\.json$",
+            "pom\\.xml$",
+            "build\\.gradle(\\.kts)?$",
+            "tsconfig(\\..*)?\\.json$",
+            "vite\\.config\\.(ts|js|mts|mjs)$",
+            "application\\.(yml|yaml|properties)$",
+            "bootstrap\\.(yml|yaml|properties)$",
+            "persistence\\.xml$",
+            "SecurityConfig\\.(java|kt)$",
+            "WebSecurityConfig\\.(java|kt)$",
+            ".*Config\\.(java|kt)$",
+            "src\\/main\\.(ts|js|tsx|jsx)$",
+            "src\\/index\\.(ts|js|tsx|jsx)$",
+            "index\\.html$",
+            ".*Controller\\.(java|kt)$",
+            ".*Service\\.(java|kt)$",
+            ".*Repository\\.(java|kt)$",
+            ".*Entity\\.(java|kt)$"
+          ],
+          "description": "Regex patterns (as strings) determining which files are prioritized for analysis content"
+        },
+        "analyzeProject.cleanCodePatterns": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [
+            "Single Responsibility violations — classes or functions doing more than one thing",
+            "long methods exceeding 20 lines of logic — candidate for extraction",
+            "deep nesting exceeding 3 levels — consider early returns or extracted conditions",
+            "god classes — large classes with too many responsibilities",
+            "magic numbers or magic strings — should be named constants",
+            "duplicated logic (DRY violations) — copy-paste code that should be extracted",
+            "misleading or unclear naming — variables, methods, or classes that do not reveal intent",
+            "functions with more than 3 parameters — consider a parameter object",
+            "unexpected side effects in methods that appear to be pure queries",
+            "missing abstraction — implementation details leaking across architectural layers",
+            "dead code — unreachable branches or unused methods"
+          ],
+          "description": "Clean code patterns checked across all code regardless of technology stack"
+        },
+        "analyzeProject.stackIssuePatterns": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "default": {
+            "TypeScript": [
+              "Overuse of `any` type — disables type safety",
+              "Unsafe type assertions with `as` that bypass narrowing",
+              "Missing strict null checks — potential runtime crashes",
+              "Implicit `any` in generic parameters or function signatures",
+              "Returning `any` from functions that have known return types"
+            ],
+            "JavaScript": [
+              "Missing `.catch()` or `try/catch` on Promise chains",
+              "Use of `eval()` — code injection risk",
+              "Loose equality (`==`) instead of strict (`===`)",
+              "Prototype pollution via unvalidated object merges",
+              "Global variable leaks from missing `const`/`let`/`var`"
+            ],
+            "Spring Boot": [
+              "Missing `@Transactional` on service methods that perform multiple writes",
+              "N+1 query problems from lazy-loaded collections without JOIN FETCH",
+              "Actuator endpoints exposed without authentication",
+              "Exception handlers that expose internal stack traces to clients",
+              "Missing input validation on REST controller parameters"
+            ],
+            "Spring Security": [
+              "CSRF protection disabled without documented justification",
+              "Overly permissive CORS configuration (allowedOrigins = \"*\")",
+              "Hardcoded credentials or secrets in configuration files",
+              "Missing method-level security (`@PreAuthorize`) on sensitive operations",
+              "Insecure JWT validation — missing signature verification or expiry checks",
+              "HTTP sessions not properly invalidated on logout"
+            ],
+            "JPA": [
+              "N+1 query problem — missing `@EntityGraph` or `JOIN FETCH` on collections",
+              "LazyInitializationException risk — accessing lazy collections outside transaction",
+              "Missing database indexes on frequently queried foreign key columns",
+              "Inappropriate `CascadeType.ALL` or `CascadeType.REMOVE` on relationships",
+              "Cartesian product queries from multiple `JOIN FETCH` on different collections",
+              "Mutable entity state shared across transactions"
+            ],
+            "Vite": [
+              "source map exposure: source maps enabled in production builds exposes original source code",
+              "missing Content Security Policy configuration",
+              "large dependencies not code-split — slow initial page load",
+              "environment variables with sensitive data prefixed with VITE_ (exposed to browser)"
+            ],
+            "SPA": [
+              "XSS via `innerHTML` or `dangerouslySetInnerHTML` with unescaped user input",
+              "API tokens or secrets stored in `localStorage` (accessible to XSS)",
+              "Missing CSRF token on state-changing API calls",
+              "Client-side route guards only — missing server-side authorization checks",
+              "Insecure direct object references — user-controlled IDs without authorization check"
+            ],
+            "Java": [
+              "Swallowed exceptions — `catch (Exception e) {}` with no logging or rethrow",
+              "Resource leaks — streams or connections not closed in `finally` or `try-with-resources`",
+              "Mutable shared state accessed from multiple threads without synchronization",
+              "String concatenation in loops — use `StringBuilder` instead",
+              "Missing `@NonNull`/`@Nullable` annotations on public API boundaries"
+            ],
+            "Kotlin": [
+              "Unsafe non-null assertion `!!` without prior null check",
+              "Blocking calls (`Thread.sleep`, blocking IO) on coroutine main dispatcher",
+              "Missing `@NonNull`/`@Nullable` annotations on Java interop boundaries",
+              "Coroutine scope leaks — launching coroutines without proper lifecycle binding"
+            ]
+          },
+          "description": "Stack-specific issue patterns sent to the LLM, keyed by technology stack name"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "npm run check-types && node esbuild.js",
+    "watch": "npm-run-all -p watch:esbuild watch:tsc",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "npm run check-types && node esbuild.js --production",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "vsix": "npm run package && vsce package --no-dependencies"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "^3.2.0",
+    "@eslint/js": "^9.17.0",
+    "@types/node": "^22.0.0",
+    "@types/vscode": "^1.93.0",
+    "@typescript-eslint/eslint-plugin": "^8.19.0",
+    "@typescript-eslint/parser": "^8.19.0",
+    "@vitest/coverage-v8": "^2.1.0",
+    "esbuild": "^0.24.0",
+    "eslint": "^9.17.0",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.19.0",
+    "vitest": "^2.1.0"
+  }
+}
