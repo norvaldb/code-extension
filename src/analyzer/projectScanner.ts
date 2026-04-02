@@ -27,9 +27,10 @@ export async function scanProject(): Promise<ProjectContext> {
 function buildFileTree(paths: string[]): string {
   const lines: string[] = [];
   for (const p of paths) {
-    const depth = p.split('/').length - 1;
+    const normalized = p.replace(/\\/g, '/');
+    const depth = normalized.split('/').length - 1;
     const indent = '  '.repeat(depth);
-    const name = p.split('/').pop() ?? p;
+    const name = normalized.split('/').pop() ?? normalized;
     lines.push(`${indent}${name}`);
   }
   return lines.join('\n');

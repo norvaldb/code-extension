@@ -41,6 +41,31 @@ describe('scanProject', () => {
     expect(context.keyFiles[0].content).toBe('line1\n... [truncated]');
   });
 
+  it('builds correct file tree for Windows-style backslash paths', async () => {
+    mockConfig({
+      contentBudgetBytes: 10_000,
+      maxScannedFiles: 500,
+      excludedGlobs: [],
+      priorityPatterns: [],
+    });
+
+    vi.mocked(workspace.findFiles).mockResolvedValueOnce([
+      uri('/workspace/src\\utils\\helper.ts'),
+    ]);
+    vi.mocked(workspace.asRelativePath).mockImplementation((u: { fsPath?: string } | string) => {
+      const raw = typeof u === 'string' ? u : (u.fsPath ?? '');
+      return raw.replace('/workspace/', '');
+    });
+    vi.mocked(workspace.fs.readFile).mockResolvedValueOnce(
+      new TextEncoder().encode('export const x = 1;')
+    );
+
+    const context = await scanProject();
+
+    const lines = context.fileTree.split('\n');
+    expect(lines).toContain('    helper.ts');
+  });
+
   it('emits warnings to output channel when files are unreadable', async () => {
     mockConfig({
       contentBudgetBytes: 10_000,
