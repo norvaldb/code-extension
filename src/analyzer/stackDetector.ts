@@ -78,11 +78,12 @@ export function detectStacks(files: FileInfo[]): SupportedStack[] {
       }
 
       const contentPatterns = rule.contentPatterns;
-      const matchesByContent = files.some(
-        (f) =>
-          f.content !== undefined &&
-          contentPatterns.some((pattern) => pattern.test(f.content as string))
-      );
+      const matchesByContent = files.some((f) => {
+        if (f.content === undefined) {
+          return false;
+        }
+        return contentPatterns.some((pattern) => pattern.test(f.content as string));
+      });
 
       if (matchesByContent) {
         detected.add(rule.stack);
