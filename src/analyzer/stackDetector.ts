@@ -82,7 +82,7 @@ export function detectStacks(files: FileInfo[]): SupportedStack[] {
         if (f.content === undefined) {
           return false;
         }
-        return contentPatterns.some((pattern) => pattern.test(f.content as string));
+        return contentPatterns.some((pattern) => pattern.test(f.content!));
       });
 
       if (matchesByContent) {
