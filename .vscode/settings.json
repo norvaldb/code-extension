@@ -1,3 +1,7 @@
 {
-  "typescript.tsdk": "node_modules/typescript/lib"
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "chat.tools.terminal.autoApprove": {
+    "npm exec": true,
+    "npm install": true
+  }
 }

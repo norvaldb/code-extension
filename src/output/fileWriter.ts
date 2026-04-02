@@ -1,3 +1,4 @@
+import { TextEncoder } from 'node:util';
 import * as vscode from 'vscode';
 import type { Issue, LLMProvider } from '../types';
 import { formatIssues } from './formatter';

@@ -1,3 +1,4 @@
+import { TextDecoder } from 'node:util';
 import * as vscode from 'vscode';
 import type { KeyFile, ProjectContext } from '../types';
 import { detectStacks } from './stackDetector';

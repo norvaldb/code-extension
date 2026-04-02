@@ -10,8 +10,9 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
+    "types": ["node"],
     "moduleResolution": "node10",
-    "ignoreDeprecations": "5.0",
+    "ignoreDeprecations": "6.0",
     "resolveJsonModule": true
   },
   "include": ["src"],
