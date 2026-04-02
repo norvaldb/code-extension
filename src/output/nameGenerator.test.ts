@@ -14,9 +14,9 @@ describe('generateFileName', () => {
     expect(result).toContain('security');
   });
 
-  it('removes the word "analyze" (stop word)', () => {
+  it('keeps domain words like "analyze" by default', () => {
     const result = generateFileName('analyze security vulnerabilities in api');
-    expect(result).not.toContain('analyze');
+    expect(result).toContain('analyze');
   });
 
   it('limits result to 35 characters', () => {

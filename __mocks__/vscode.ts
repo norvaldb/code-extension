@@ -9,6 +9,16 @@ const workspace = {
     },
   ],
   findFiles: vi.fn().mockResolvedValue([]),
+  asRelativePath: vi.fn().mockImplementation((uri: { fsPath?: string } | string) => {
+    const raw = typeof uri === 'string' ? uri : (uri.fsPath ?? '');
+    if (raw.startsWith('/workspace/')) {
+      return raw.slice('/workspace/'.length);
+    }
+    if (raw === '/workspace') {
+      return '';
+    }
+    return raw;
+  }),
   fs: {
     readFile: vi.fn().mockResolvedValue(new Uint8Array()),
     writeFile: vi.fn().mockResolvedValue(undefined),
@@ -53,6 +63,11 @@ const ThemeIcon = vi.fn().mockImplementation((id: string) => ({ id }));
 const window = {
   showErrorMessage: vi.fn(),
   showInformationMessage: vi.fn(),
+  createOutputChannel: vi.fn().mockImplementation(() => ({
+    appendLine: vi.fn(),
+    show: vi.fn(),
+    dispose: vi.fn(),
+  })),
 };
 
 const LanguageModelChatMessage = {

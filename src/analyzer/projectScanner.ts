@@ -1,47 +1,13 @@
 import * as vscode from 'vscode';
 import type { KeyFile, ProjectContext } from '../types';
 import { detectStacks } from './stackDetector';
-
-const CONTENT_BUDGET_BYTES = 60_000;
-
-const PRIORITY_PATTERNS: RegExp[] = [
-  // Config and manifest files (highest priority)
-  /package\.json$/,
-  /pom\.xml$/,
-  /build\.gradle(\.kts)?$/,
-  /tsconfig(\..*)?\.json$/,
-  /vite\.config\.(ts|js|mts|mjs)$/,
-  /application\.(yml|yaml|properties)$/,
-  /bootstrap\.(yml|yaml|properties)$/,
-  /persistence\.xml$/,
-  // Security and architecture
-  /SecurityConfig\.(java|kt)$/,
-  /WebSecurityConfig\.(java|kt)$/,
-  /.*Config\.(java|kt)$/,
-  // Source entry points and key structural files
-  /src\/main\.(ts|js|tsx|jsx)$/,
-  /src\/index\.(ts|js|tsx|jsx)$/,
-  /index\.html$/,
-  /.*Controller\.(java|kt)$/,
-  /.*Service\.(java|kt)$/,
-  /.*Repository\.(java|kt)$/,
-  /.*Entity\.(java|kt)$/,
-];
-
-const EXCLUDED_DIRS =
-  '**/node_modules/**,' +
-  '**/.git/**,' +
-  '**/out/**,' +
-  '**/dist/**,' +
-  '**/build/**,' +
-  '**/target/**,' +
-  '**/.gradle/**,' +
-  '**/.idea/**,' +
-  '**/*.min.js,' +
-  '**/*.map';
+import { getAnalyzeProjectSettings } from '../config/settings';
+import { appendWarning } from '../logging/outputChannel';
 
 export async function scanProject(): Promise<ProjectContext> {
-  const uris = await vscode.workspace.findFiles('**/*', `{${EXCLUDED_DIRS}}`, 500);
+  const settings = getAnalyzeProjectSettings();
+  const excludePattern = buildExcludePattern(settings.excludedGlobs);
+  const uris = await vscode.workspace.findFiles('**/*', excludePattern, settings.maxScannedFiles);
 
   const relativePaths = uris
     .map((uri) => vscode.workspace.asRelativePath(uri))
@@ -49,8 +15,8 @@ export async function scanProject(): Promise<ProjectContext> {
 
   const fileTree = buildFileTree(relativePaths);
 
-  const prioritized = prioritizeFiles(uris);
-  const keyFiles = await readFiles(prioritized);
+  const prioritized = prioritizeFiles(uris, settings.priorityPatterns);
+  const keyFiles = await readFiles(prioritized, settings.contentBudgetBytes);
 
   const allFileInfos = keyFiles.map((kf) => ({ path: kf.path, content: kf.content }));
   const detectedStacks = detectStacks(allFileInfos);
@@ -69,13 +35,13 @@ function buildFileTree(paths: string[]): string {
   return lines.join('\n');
 }
 
-function prioritizeFiles(uris: vscode.Uri[]): vscode.Uri[] {
+function prioritizeFiles(uris: vscode.Uri[], patterns: RegExp[]): vscode.Uri[] {
   const priority: vscode.Uri[] = [];
   const rest: vscode.Uri[] = [];
 
   for (const uri of uris) {
     const rel = vscode.workspace.asRelativePath(uri);
-    if (PRIORITY_PATTERNS.some((p) => p.test(rel))) {
+    if (patterns.some((p) => p.test(rel))) {
       priority.push(uri);
     } else {
       rest.push(uri);
@@ -85,9 +51,10 @@ function prioritizeFiles(uris: vscode.Uri[]): vscode.Uri[] {
   return [...priority, ...rest];
 }
 
-async function readFiles(uris: vscode.Uri[]): Promise<KeyFile[]> {
+async function readFiles(uris: vscode.Uri[], contentBudgetBytes: number): Promise<KeyFile[]> {
   const results: KeyFile[] = [];
-  let budget = CONTENT_BUDGET_BYTES;
+  let budget = contentBudgetBytes;
+  let skippedFiles = 0;
 
   for (const uri of uris) {
     if (budget <= 0) break;
@@ -97,19 +64,39 @@ async function readFiles(uris: vscode.Uri[]): Promise<KeyFile[]> {
       const content = new TextDecoder().decode(bytes);
 
       if (content.length > budget) {
+        const safeBudget = findSafeBoundary(content, budget);
         results.push({
           path: vscode.workspace.asRelativePath(uri),
-          content: content.slice(0, budget) + '\n... [truncated]',
+          content: content.slice(0, safeBudget) + '\n... [truncated]',
         });
         budget = 0;
       } else {
         results.push({ path: vscode.workspace.asRelativePath(uri), content });
         budget -= content.length;
       }
-    } catch {
-      // Skip unreadable files (binaries, permission errors)
+    } catch (error) {
+      skippedFiles += 1;
+      appendWarning(
+        `Failed to read file ${uri.fsPath}: ${error instanceof Error ? error.message : 'unknown error'}`
+      );
     }
   }
 
+  if (skippedFiles > 0) {
+    appendWarning(`Project scan skipped ${skippedFiles} unreadable file(s).`);
+  }
+
   return results;
+}
+
+function buildExcludePattern(globs: string[]): string | undefined {
+  if (globs.length === 0) return undefined;
+  return `{${globs.join(',')}}`;
+}
+
+function findSafeBoundary(content: string, budget: number): number {
+  const bounded = Math.max(0, Math.min(budget, content.length));
+  if (bounded === 0) return 0;
+  const lastNewline = content.lastIndexOf('\n', bounded);
+  return lastNewline > 0 ? lastNewline : bounded;
 }

@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import type { AnalysisResult, ProjectContext, SupportedStack } from '../types';
+import { getAnalyzeProjectSettings } from '../config/settings';
 
 const SEVERITY_ORDER = { Critical: 0, Major: 1, Minor: 2 } as const;
 
@@ -84,11 +85,17 @@ const CLEAN_CODE_PATTERNS: string[] = [
 ];
 
 function buildSystemPrompt(stacks: SupportedStack[]): string {
-  const stackPatterns = stacks.flatMap((s) => STACK_ISSUE_PATTERNS[s] ?? []);
+  const settings = getAnalyzeProjectSettings();
+  const stackPatterns = stacks.flatMap(
+    (s) => settings.stackIssuePatterns[s] ?? STACK_ISSUE_PATTERNS[s] ?? []
+  );
+  const cleanCodePatterns =
+    settings.cleanCodePatterns.length > 0 ? settings.cleanCodePatterns : CLEAN_CODE_PATTERNS;
+  const maxIssues = settings.maxIssues;
 
   return `You are an expert code reviewer with deep knowledge of software quality, security, and clean code principles.
 
-Analyze the provided project thoroughly and identify up to 20 issues.
+Analyze the provided project thoroughly and identify up to ${maxIssues} issues.
 
 ## Issue categories to look for
 
@@ -96,7 +103,7 @@ Analyze the provided project thoroughly and identify up to 20 issues.
 ${stackPatterns.map((p) => `- ${p}`).join('\n')}
 
 ### Clean code principles (apply to all code)
-${CLEAN_CODE_PATTERNS.map((p) => `- ${p}`).join('\n')}
+${cleanCodePatterns.map((p) => `- ${p}`).join('\n')}
 
 ## Output format
 
@@ -124,7 +131,7 @@ The JSON must match this schema exactly:
 - Minor: Style issue, minor inefficiency, or improvement opportunity
 
 ## Rules
-- Return a maximum of 20 issues
+- Return a maximum of ${maxIssues} issues
 - Sort issues by severity: Critical first, then Major, then Minor
 - Use actual code from the project files in codeExample and mitigationExample where possible
 - Be specific — reference file names and line numbers where identifiable
@@ -157,6 +164,7 @@ ${fileContents}`;
 }
 
 function parseResponse(raw: string): AnalysisResult {
+  const settings = getAnalyzeProjectSettings();
   // Strip code fences if the model wrapped the JSON
   const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
 
@@ -178,7 +186,7 @@ function parseResponse(raw: string): AnalysisResult {
     (a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]
   );
 
-  return { summary: result.summary, issues: sorted.slice(0, 20) };
+  return { summary: result.summary, issues: sorted.slice(0, settings.maxIssues) };
 }
 
 export async function analyzeProject(

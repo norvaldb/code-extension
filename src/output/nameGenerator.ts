@@ -1,22 +1,15 @@
-const MAX_LENGTH = 35;
-
-const STOP_WORDS = new Set([
-  'a', 'an', 'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
-  'of', 'with', 'by', 'from', 'is', 'are', 'be', 'been', 'being',
-  'i', 'me', 'my', 'we', 'our', 'you', 'your', 'it', 'its',
-  'this', 'that', 'these', 'those', 'please', 'analyze', 'check',
-  'look', 'find', 'review', 'project',
-]);
+import { getAnalyzeProjectSettings } from '../config/settings';
 
 export function generateFileName(prompt: string, suffix?: string): string {
+  const settings = getAnalyzeProjectSettings();
   const words = prompt
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, ' ')
     .split(/\s+/)
-    .filter((w) => w.length > 1 && !STOP_WORDS.has(w));
+    .filter((w) => w.length > 1 && !settings.stopWords.has(w));
 
-  const slug = buildSlug(words, MAX_LENGTH);
-  const base = slug || 'analysis';
+  const slug = buildSlug(words, settings.maxFilenameLength);
+  const base = slug || settings.fallbackReportBaseName;
   return suffix ? `${base}-${suffix}` : base;
 }
 

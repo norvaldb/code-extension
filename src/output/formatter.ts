@@ -1,4 +1,5 @@
 import type { Issue, LLMProvider, Severity } from '../types';
+import { getAnalyzeProjectSettings } from '../config/settings';
 
 const SEVERITY_EMOJI: Record<Severity, string> = {
   Critical: '🔴',
@@ -18,11 +19,12 @@ export interface FormatOptions {
 }
 
 export function formatIssues(issues: Issue[], options: FormatOptions): string {
+  const settings = getAnalyzeProjectSettings();
   const { prompt, provider, summary, partLabel } = options;
   const date = new Date().toISOString().slice(0, 10);
   const title = partLabel
-    ? `# Project Analysis: ${truncate(prompt, 60)} (${partLabel})`
-    : `# Project Analysis: ${truncate(prompt, 60)}`;
+    ? `# Project Analysis: ${truncate(prompt, settings.titleMaxLength)} (${partLabel})`
+    : `# Project Analysis: ${truncate(prompt, settings.titleMaxLength)}`;
 
   const sections: string[] = [
     title,

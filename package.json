@@ -2,10 +2,18 @@
   "name": "analyze-project",
   "displayName": "Analyze Project",
   "description": "Analyze your project for issues using GitHub Copilot or Claude via @analyze-project chat participant",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "analyze-project",
   "type": "module",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/norvaldb/code-extension.git"
+  },
+  "bugs": {
+    "url": "https://github.com/norvaldb/code-extension/issues"
+  },
+  "homepage": "https://github.com/norvaldb/code-extension#readme",
   "engines": {
     "vscode": "^1.93.0"
   },
@@ -32,7 +40,10 @@
       "properties": {
         "analyzeProject.llmProvider": {
           "type": "string",
-          "enum": ["copilot", "claude"],
+          "enum": [
+            "copilot",
+            "claude"
+          ],
           "enumDescriptions": [
             "Use GitHub Copilot (requires GitHub Copilot extension)",
             "Use Claude (requires Claude VS Code extension)"
@@ -48,32 +59,117 @@
         "analyzeProject.contentBudgetBytes": {
           "type": "number",
           "default": 60000,
+          "minimum": 10000,
+          "maximum": 250000,
           "description": "Maximum total bytes read from project files before truncation, to optimize LLM token usage"
         },
         "analyzeProject.maxFilenameLength": {
           "type": "number",
           "default": 35,
+          "minimum": 20,
+          "maximum": 80,
           "description": "Maximum character length for generated analysis report filenames"
         },
         "analyzeProject.maxIssues": {
           "type": "number",
           "default": 20,
+          "minimum": 5,
+          "maximum": 50,
           "description": "Maximum number of issues to request and return per analysis run"
+        },
+        "analyzeProject.maxScannedFiles": {
+          "type": "number",
+          "default": 500,
+          "minimum": 100,
+          "maximum": 5000,
+          "description": "Maximum number of files scanned from the workspace before analysis"
+        },
+        "analyzeProject.issuesPerFile": {
+          "type": "number",
+          "default": 10,
+          "minimum": 5,
+          "maximum": 25,
+          "description": "Number of issues per markdown report file before splitting into multiple parts"
+        },
+        "analyzeProject.titleMaxLength": {
+          "type": "number",
+          "default": 60,
+          "minimum": 40,
+          "maximum": 120,
+          "description": "Maximum number of characters used from the prompt in report titles"
+        },
+        "analyzeProject.fallbackReportBaseName": {
+          "type": "string",
+          "default": "analysis",
+          "description": "Fallback report base filename when no meaningful words are extracted from the prompt"
         },
         "analyzeProject.stopWords": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "default": [
-            "a", "an", "the", "and", "or", "but", "in", "on", "at", "to", "for",
-            "of", "with", "by", "from", "is", "are", "be", "been", "being",
-            "i", "me", "my", "we", "our", "you", "your", "it", "its",
-            "this", "that", "these", "those", "please"
+            "a",
+            "an",
+            "the",
+            "and",
+            "or",
+            "but",
+            "in",
+            "on",
+            "at",
+            "to",
+            "for",
+            "of",
+            "with",
+            "by",
+            "from",
+            "is",
+            "are",
+            "be",
+            "been",
+            "being",
+            "i",
+            "me",
+            "my",
+            "we",
+            "our",
+            "you",
+            "your",
+            "it",
+            "its",
+            "this",
+            "that",
+            "these",
+            "those",
+            "please"
           ],
           "description": "Words filtered out when generating output filenames from the user prompt"
         },
+        "analyzeProject.excludedGlobs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "**/node_modules/**",
+            "**/.git/**",
+            "**/out/**",
+            "**/dist/**",
+            "**/build/**",
+            "**/target/**",
+            "**/.gradle/**",
+            "**/.idea/**",
+            "**/*.min.js",
+            "**/*.map"
+          ],
+          "description": "Glob patterns excluded from workspace scanning"
+        },
         "analyzeProject.priorityPatterns": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "default": [
             "package\\.json$",
             "pom\\.xml$",
@@ -98,7 +194,9 @@
         },
         "analyzeProject.cleanCodePatterns": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "default": [
             "Single Responsibility violations — classes or functions doing more than one thing",
             "long methods exceeding 20 lines of logic — candidate for extraction",
@@ -118,7 +216,9 @@
           "type": "object",
           "additionalProperties": {
             "type": "array",
-            "items": { "type": "string" }
+            "items": {
+              "type": "string"
+            }
           },
           "default": {
             "TypeScript": [
@@ -206,18 +306,18 @@
     "vsix": "npm run package && vsce package --no-dependencies"
   },
   "devDependencies": {
-    "@vscode/vsce": "^3.2.0",
     "@eslint/js": "^9.17.0",
     "@types/node": "^22.0.0",
     "@types/vscode": "^1.93.0",
     "@typescript-eslint/eslint-plugin": "^8.19.0",
     "@typescript-eslint/parser": "^8.19.0",
-    "@vitest/coverage-v8": "^2.1.0",
-    "esbuild": "^0.24.0",
+    "@vitest/coverage-v8": "^4.1.2",
+    "@vscode/vsce": "^3.2.0",
+    "esbuild": "^0.27.5",
     "eslint": "^9.17.0",
     "npm-run-all": "^4.1.5",
     "typescript": "^5.7.0",
     "typescript-eslint": "^8.19.0",
-    "vitest": "^2.1.0"
+    "vitest": "^4.1.2"
   }
 }
